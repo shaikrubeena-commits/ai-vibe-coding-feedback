@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Feedback Results — AI Vibe Coding</title>
+
+  <!--
+  TRAINER DASHBOARD
+  Open this file in your browser after students have submitted feedback.
+  Make sure you have set SCRIPT_URL to your Google Apps Script Web App URL.
+  -->
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy:      #1B3A6B;
+      --navy-dk:   #112649;
+      --navy-mid:  #1e4a8c;
+      --orange:    #FF6B35;
+      --orange-lt: #fff0ea;
+      --bg:        #eef2f8;
+      --card:      #ffffff;
+      --text:      #18182e;
+      --muted:     #5a6880;
+      --border:    #dde3ee;
+      --shadow-sm: 0 2px 10px rgba(27,58,107,0.08);
+      --shadow-md: 0 4px 24px rgba(27,58,107,0.12);
+      --r-card:    18px;
+    }
+
+    body {
+      font-family: 'DM Sans', 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: 64px;
+    }
+
+    /* ── header ── */
+    .hdr {
+      background: linear-gradient(150deg, var(--navy-dk) 0%, var(--navy) 55%, var(--navy-mid) 100%);
+      color: #fff;
+      padding: 36px 24px 30px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hdr::before {
+      content: '';
+      position: absolute;
+      width: 300px; height: 300px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.04);
+      top: -100px; right: -80px;
+      pointer-events: none;
+    }
+    .hdr-inner { max-width: 860px; margin: 0 auto; position: relative; z-index: 1; }
+    .hdr-tag {
+      display: inline-block;
+      background: rgba(255,107,53,0.18);
+      border: 1px solid rgba(255,107,53,0.38);
+      color: #ffb899;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 4px 14px;
+      margin-bottom: 14px;
+    }
+    .hdr h1 {
+      font-size: clamp(20px,4vw,26px);
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      margin-bottom: 6px;
+    }
+    .hdr p { font-size: 14px; opacity: 0.72; }
+
+    /* ── top bar ── */
+    .topbar {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 18px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .badge-count {
+      background: var(--card);
+      border-radius: 10px;
+      box-shadow: var(--shadow-sm);
+      padding: 10px 18px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--navy);
+      border: 2px solid var(--border);
+    }
+    .badge-count span { font-size: 22px; font-weight: 700; display: block; line-height: 1.1; }
+
+    .spacer { flex: 1; }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 18px;
+      font-family: inherit;
+      font-size: 13.5px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .btn-outline {
+      background: var(--card);
+      color: var(--navy);
+      border: 2px solid var(--border);
+      box-shadow: var(--shadow-sm);
+    }
+    .btn-outline:hover { border-color: var(--navy-mid); background: rgba(27,58,107,0.04); }
+
+    .btn-orange {
+      background: linear-gradient(135deg, var(--orange), #d9512a);
+      color: #fff;
+      box-shadow: 0 3px 14px rgba(255,107,53,0.35);
+    }
+    .btn-orange:hover { box-shadow: 0 5px 20px rgba(255,107,53,0.45); transform: translateY(-1px); }
+
+    /* ── loading / empty / error states ── */
+    .state-box {
+      max-width: 480px;
+      margin: 60px auto;
+      padding: 0 20px;
+      text-align: center;
+    }
+    .state-card {
+      background: var(--card);
+      border-radius: var(--r-card);
+      box-shadow: var(--shadow-md);
+      padding: 48px 32px;
+    }
+    .state-icon { font-size: 48px; margin-bottom: 16px; display: block; }
+    .state-title { font-size: 18px; font-weight: 700; margin-bottom: 10px; }
+    .state-p { font-size: 14px; color: var(--muted); line-height: 1.6; }
+    .spinner {
+      width: 44px; height: 44px;
+      border: 4px solid var(--border);
+      border-top-color: var(--navy);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 20px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── content grid ── */
+    .content {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 0 16px;
+    }
+
+    /* ── section label ── */
+    .section-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 28px 0 12px;
+    }
+
+    /* ── chart card ── */
+    .chart-card {
+      background: var(--card);
+      border-radius: var(--r-card);
+      box-shadow: var(--shadow-sm);
+      padding: 22px 22px 18px;
+      margin-bottom: 14px;
+    }
+    .chart-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 4px;
+    }
+    .chart-q {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 18px;
+      line-height: 1.4;
+    }
+    .chart-wrap { position: relative; }
+
+    /* ── Q5 text responses ── */
+    .q5-card {
+      background: var(--card);
+      border-radius: var(--r-card);
+      box-shadow: var(--shadow-sm);
+      padding: 22px;
+      margin-bottom: 14px;
+    }
+    .q5-header {
+      font-size: 16px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 16px;
+    }
+    .q5-responses { display: flex; flex-direction: column; gap: 10px; }
+    .q5-response {
+      background: #f7f9fc;
+      border-left: 3px solid var(--orange);
+      border-radius: 0 10px 10px 0;
+      padding: 12px 14px;
+      font-size: 14px;
+      line-height: 1.55;
+      color: var(--text);
+    }
+    .q5-empty { font-size: 14px; color: var(--muted); font-style: italic; }
+
+    /* ── setup card ── */
+    .setup-card {
+      background: var(--card);
+      border: 2px dashed var(--border);
+      border-radius: var(--r-card);
+      padding: 28px 24px;
+      margin-bottom: 14px;
+    }
+    .setup-card h3 { font-size: 15px; font-weight: 700; margin-bottom: 8px; color: var(--navy); }
+    .setup-card p { font-size: 14px; color: var(--muted); line-height: 1.6; }
+    .setup-code {
+      background: #f0f4fa;
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-family: 'Courier New', monospace;
+      font-size: 12px;
+      color: var(--navy);
+      margin-top: 10px;
+      word-break: break-all;
+    }
+
+    @media (max-width: 600px) {
+      .hdr { padding: 28px 16px 24px; }
+      .chart-card { padding: 16px 14px 14px; }
+      .topbar { padding: 14px 12px; gap: 8px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- header -->
+  <div class="hdr">
+    <div class="hdr-inner">
+      <div class="hdr-tag">Trainer Dashboard</div>
+      <h1>Feedback Results</h1>
+      <p>AI Vibe Coding with Claude Code</p>
+    </div>
+  </div>
+
+  <!-- top bar -->
+  <div class="topbar">
+    <div class="badge-count">
+      <span id="response-count">—</span>
+      Responses
+    </div>
+    <div class="spacer"></div>
+    <button class="btn btn-outline" onclick="loadData()" title="Refresh data">
+      ↻ Refresh
+    </button>
+    <button class="btn btn-orange" onclick="downloadJSON()" id="btn-dl" disabled>
+      ↓ Download JSON
+    </button>
+  </div>
+
+  <!-- dynamic content injected here -->
+  <div id="main"></div>
+
+  <script>
+    // ── Replace with your Google Apps Script Web App URL ──────────────
+    const SCRIPT_URL = 'PASTE_YOUR_SCRIPT_URL_HERE';
+    // ──────────────────────────────────────────────────────────────────
+
+    // Question definitions — order must match Google Sheet columns (B=1, C=2, … G=6)
+    const QUESTIONS = [
+      {
+        col: 1,
+        title: 'Q1 — Overall Experience',
+        q: 'How was your overall experience?',
+        opts: [
+          'Excellent — exceeded my expectations',
+          'Very good — learned a lot',
+          'Good — useful but could be improved',
+          'Okay — needed more time on certain areas'
+        ]
+      },
+      {
+        col: 2,
+        title: 'Q2 — Confidence Shift',
+        q: 'How has your confidence shifted?',
+        opts: [
+          'Much more confident — I can see myself using this',
+          'More confident — I understand it now',
+          'About the same — I need more sessions',
+          'Still unsure — it was a lot to take in'
+        ]
+      },
+      {
+        col: 3,
+        title: 'Q3 — Most Valuable Part',
+        q: 'What was the most valuable part?',
+        opts: [
+          'Building a real website from scratch',
+          'Understanding what Claude Code actually is',
+          'Seeing how simple the prompts can be',
+          'The warm-up exercises and games',
+          'Realising AI coding is not as scary as I thought'
+        ]
+      },
+      {
+        col: 4,
+        title: 'Q4 — Would You Recommend',
+        q: 'Would you recommend this session?',
+        opts: [
+          'Absolutely yes — I already have someone in mind',
+          'Yes — I think they would find it valuable',
+          'Maybe — depends on what they are looking for',
+          'Not sure yet'
+        ]
+      },
+      {
+        col: 6,
+        title: 'Q6 — Session 2 Interest',
+        q: 'Are you interested in Session 2?',
+        opts: [
+          'Yes — sign me up',
+          'Maybe — tell me more',
+          'Not right now'
+        ]
+      }
+    ];
+
+    var allRows = [];
+    var chartInstances = [];
+
+    // Load data using JSONP (works from file:// and from hosted URLs)
+    function loadData() {
+      document.getElementById('main').innerHTML = renderLoading();
+      document.getElementById('response-count').textContent = '—';
+      document.getElementById('btn-dl').disabled = true;
+
+      if (SCRIPT_URL === 'PASTE_YOUR_SCRIPT_URL_HERE') {
+        setTimeout(function() {
+          document.getElementById('main').innerHTML = renderSetupNeeded();
+        }, 300);
+        return;
+      }
+
+      // Remove any old JSONP script tag
+      var old = document.getElementById('jsonp-script');
+      if (old) old.remove();
+
+      window._resultsCallback = function(rows) {
+        allRows = rows;
+        document.getElementById('response-count').textContent = rows.length;
+        document.getElementById('btn-dl').disabled = rows.length === 0;
+        renderDashboard(rows);
+      };
+
+      var s = document.createElement('script');
+      s.id = 'jsonp-script';
+      s.src = SCRIPT_URL + '?callback=_resultsCallback&t=' + Date.now();
+      s.onerror = function() {
+        document.getElementById('main').innerHTML = renderError();
+      };
+      document.body.appendChild(s);
+
+      // Timeout fallback if script never fires
+      setTimeout(function() {
+        if (allRows.length === 0 && document.getElementById('main').querySelector('.spinner')) {
+          document.getElementById('main').innerHTML = renderError();
+        }
+      }, 12000);
+    }
+
+    function renderDashboard(rows) {
+      // Destroy previous Chart.js instances to prevent canvas reuse errors
+      chartInstances.forEach(function(c) { c.destroy(); });
+      chartInstances = [];
+
+      if (rows.length === 0) {
+        document.getElementById('main').innerHTML = renderEmpty();
+        return;
+      }
+
+      var html = '<div class="content">';
+      html += '<div class="section-label">Question Breakdown</div>';
+
+      QUESTIONS.forEach(function(def) {
+        // Count each option
+        var counts = {};
+        def.opts.forEach(function(o) { counts[o] = 0; });
+        rows.forEach(function(row) {
+          var val = row[def.col] || '';
+          if (counts[val] !== undefined) counts[val]++;
+        });
+
+        html += '<div class="chart-card">';
+        html += '<div class="chart-title">' + escHtml(def.title) + '</div>';
+        html += '<div class="chart-q">' + escHtml(def.q) + '</div>';
+        html += '<div class="chart-wrap"><canvas id="chart-' + def.col + '" height="' + (def.opts.length * 52) + '"></canvas></div>';
+        html += '</div>';
+      });
+
+      // Q5 text responses
+      var q5s = rows.map(function(r) { return (r[5] || '').trim(); }).filter(function(v) { return v && v !== '—'; });
+      html += '<div class="section-label">In Their Own Words (Q5)</div>';
+      html += '<div class="q5-card">';
+      html += '<div class="q5-header">What they told us (' + q5s.length + ' response' + (q5s.length !== 1 ? 's' : '') + ')</div>';
+      html += '<div class="q5-responses">';
+      if (q5s.length === 0) {
+        html += '<p class="q5-empty">No written responses yet.</p>';
+      } else {
+        q5s.forEach(function(txt) {
+          html += '<div class="q5-response">"' + escHtml(txt) + '"</div>';
+        });
+      }
+      html += '</div></div>';
+      html += '</div>'; // /content
+
+      document.getElementById('main').innerHTML = html;
+
+      // Build Chart.js charts after DOM is ready
+      QUESTIONS.forEach(function(def) {
+        var counts = {};
+        def.opts.forEach(function(o) { counts[o] = 0; });
+        rows.forEach(function(row) {
+          var val = row[def.col] || '';
+          if (counts[val] !== undefined) counts[val]++;
+        });
+
+        var labels = def.opts;
+        var values = def.opts.map(function(o) { return counts[o]; });
+        var total = rows.length;
+        var maxVal = Math.max.apply(null, values);
+
+        var bgColors = values.map(function(v) {
+          return v === maxVal && maxVal > 0 ? 'rgba(255,107,53,0.9)' : 'rgba(27,58,107,0.72)';
+        });
+        var borderColors = values.map(function(v) {
+          return v === maxVal && maxVal > 0 ? '#FF6B35' : '#1B3A6B';
+        });
+
+        var canvas = document.getElementById('chart-' + def.col);
+        if (!canvas) return;
+
+        var chart = new Chart(canvas, {
+          type: 'bar',
+          data: {
+            labels: labels,
+            datasets: [{
+              data: values,
+              backgroundColor: bgColors,
+              borderColor: borderColors,
+              borderWidth: 0,
+              borderRadius: 6,
+              borderSkipped: false
+            }]
+          },
+          options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: function(ctx) {
+                    var pct = total > 0 ? Math.round(ctx.parsed.x / total * 100) : 0;
+                    return ' ' + ctx.parsed.x + ' response' + (ctx.parsed.x !== 1 ? 's' : '') + ' (' + pct + '%)';
+                  }
+                },
+                backgroundColor: '#18182e',
+                padding: 10,
+                cornerRadius: 8,
+                titleFont: { family: "'DM Sans', system-ui" },
+                bodyFont: { family: "'DM Sans', system-ui" }
+              }
+            },
+            scales: {
+              x: {
+                beginAtZero: true,
+                ticks: {
+                  stepSize: 1,
+                  font: { family: "'DM Sans', system-ui", size: 12 },
+                  color: '#5a6880'
+                },
+                grid: { color: 'rgba(0,0,0,0.05)' },
+                border: { display: false }
+              },
+              y: {
+                ticks: {
+                  font: { family: "'DM Sans', system-ui", size: 13 },
+                  color: '#18182e',
+                  maxTicksLimit: 10,
+                  callback: function(val, idx) {
+                    var lbl = this.getLabelForValue(idx);
+                    // Show percentage next to label
+                    var pct = total > 0 ? Math.round(values[idx] / total * 100) : 0;
+                    return lbl.length > 38 ? lbl.substring(0, 36) + '…' : lbl;
+                  }
+                },
+                grid: { display: false },
+                border: { display: false }
+              }
+            }
+          }
+        });
+
+        chartInstances.push(chart);
+      });
+    }
+
+    // Download all responses as responses.json
+    function downloadJSON() {
+      if (allRows.length === 0) return;
+      var keys = ['timestamp','overall','confidence','mostValuable','recommend','inYourWords','session2'];
+      var out = allRows.map(function(row) {
+        var obj = {};
+        keys.forEach(function(k, i) { obj[k] = row[i] !== undefined ? row[i] : ''; });
+        return obj;
+      });
+      var blob = new Blob([JSON.stringify(out, null, 2)], { type: 'application/json' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'responses.json';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    function escHtml(str) {
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // ── HTML templates for states ────────────────────────────────────
+
+    function renderLoading() {
+      return '<div class="state-box"><div class="state-card">'
+        + '<div class="spinner"></div>'
+        + '<div class="state-title">Loading responses…</div>'
+        + '<p class="state-p">Fetching from Google Sheets</p>'
+        + '</div></div>';
+    }
+
+    function renderEmpty() {
+      return '<div class="content"><div class="state-box" style="margin:30px auto"><div class="state-card">'
+        + '<span class="state-icon">📭</span>'
+        + '<div class="state-title">No responses yet</div>'
+        + '<p class="state-p">Your Google Sheet is connected but no one has submitted feedback yet. Share the feedback.html link in your WhatsApp group to get started.</p>'
+        + '</div></div></div>';
+    }
+
+    function renderError() {
+      return '<div class="content"><div class="setup-card">'
+        + '<h3>⚠️ Could not load data</h3>'
+        + '<p>This usually means the SCRIPT_URL has not been set, or the Apps Script is not deployed yet.</p>'
+        + '<p style="margin-top:8px">Open <strong>results.html</strong> in a text editor and update:</p>'
+        + '<div class="setup-code">const SCRIPT_URL = \'PASTE_YOUR_SCRIPT_URL_HERE\';</div>'
+        + '<p style="margin-top:10px;font-size:13px;color:#5a6880">See the setup instructions at the top of feedback.html for the full deployment guide.</p>'
+        + '</div></div>';
+    }
+
+    function renderSetupNeeded() {
+      return '<div class="content"><div class="setup-card">'
+        + '<h3>👋 Almost ready!</h3>'
+        + '<p>To see results, connect this dashboard to your Google Sheet:</p>'
+        + '<ol style="margin:12px 0 0 18px;font-size:14px;color:#5a6880;line-height:2">'
+        + '<li>Follow the setup steps in feedback.html (view source at the top)</li>'
+        + '<li>Copy your Apps Script Web App URL</li>'
+        + '<li>In <strong>results.html</strong>, replace <code>PASTE_YOUR_SCRIPT_URL_HERE</code> with that URL</li>'
+        + '<li>Reload this page</li>'
+        + '</ol>'
+        + '</div></div>';
+    }
+
+    // Auto-load on page open
+    loadData();
+  </script>
+</body>
+</html>
